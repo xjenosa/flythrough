@@ -1,0 +1,71 @@
+---
+// Astro wrapper for <fly-through>, entry "flythrough/astro". Children with
+// data-stop="<id>" become the overlays shown at each stop (a stop is written
+// on its card, data-at / data-frame / data-time, or passed as `stops`);
+// children with
+// data-moment, data-from and data-to (flight positions 0..1; or
+// data-from-frame / data-to-frame, data-from-time / data-to-time) pass by
+// between stops. Ships as source: Astro compiles it in the host project. The relative
+// paths below are dist/ paths (tools/build.mjs copies this file there).
+// The file is not named after the stylesheet: Astro names a page's CSS file
+// after what imported it, and "Flythrough.<hash>.css" beside the
+// "flythrough.<hash>.css" of a page that imports flythrough/style.css
+// itself is one file on a disk that ignores case, two addresses on a server
+// that does not.
+import type { Stop } from '../index.js';
+import '../flythrough.css';
+
+interface Props {
+  src: string;
+  stops?: Stop[];
+  length?: number;
+  fit?: 'cover' | 'contain';
+  snap?: 'off';
+  glide?: 'fixed' | 'scaled';
+  returnToFirst?: 'on' | 'off';
+  autoscroll?: 'auto' | 'off';
+  reach?: number;
+  mode?: 'auto' | 'scrub' | 'stills';
+  loadingText?: string;
+  barLabel?: string;
+  bar?: 'off';
+  intro?: boolean;
+  legs?: number[];
+  hold?: number;
+  class?: string;
+  id?: string;
+  style?: string;
+  // data-* reach the element as written; among them the attribute Astro
+  // adds for a page's scoped <style>, so it applies to the player when the
+  // page also gives it a class.
+  [data: `data-${string}`]: unknown;
+}
+const { src, stops, length, fit, snap, glide, returnToFirst, autoscroll, reach, mode, loadingText, barLabel, bar, intro, legs, hold, class: cls, ...rest } = Astro.props;
+---
+
+<fly-through
+  src={src}
+  stops={stops ? JSON.stringify(stops) : undefined}
+  length={length}
+  fit={fit}
+  snap={snap}
+  glide={glide}
+  return-to-first={returnToFirst}
+  autoscroll={autoscroll}
+  reach={reach}
+  mode={mode}
+  loading-text={loadingText}
+  bar-label={barLabel}
+  bar={bar}
+  intro={intro}
+  legs={legs ? JSON.stringify(legs) : undefined}
+  hold={hold}
+  class={cls}
+  {...rest}
+>
+  <slot />
+</fly-through>
+
+<script>
+  import '../index.js';
+</script>

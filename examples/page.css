@@ -1,0 +1,4 @@
+/* The example pages' own look; nothing the player needs. */
+html, body { margin: 0; background: #111; color: #eee; font: 16px/1.5 system-ui, sans-serif; }
+main > p, main > button { margin: 2rem; }
+[data-stop], [data-moment] { position: absolute; left: 8%; bottom: 22%; margin: 0; font-size: 2rem; }

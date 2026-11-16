@@ -1,0 +1,971 @@
+/* Demo page. Layout, type system and motion follow animejs.com's home page
+   (measured; none of its words, logo or pictures): fixed anchors on a 64px
+   frame (16px under 900px), flat boxes with 4px and 12px corners, quick
+   eased motion, colour-only hovers. Colours are Apple's dark greys on black,
+   no accents. Barlow for headlines and reading lines; IBM Plex Mono for every
+   control (one label style, .ui below) and for code. One breakpoint, 900px.
+   The page ends at the last stop: nothing sits below the player. */
+/* Linked from index.html, so the dev server applies it before the first
+   paint too; the fonts, Lenis's and the player's sheets come in here. */
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+@import 'lenis/dist/lenis.css';
+@import '../src/flythrough.css';
+
+:root {
+  --bg: #000;
+  --bg-2: #161617;
+  --bg-3: #1d1d1f;
+  --bg-4: #2c2c2e;
+  --bg-5: #3a3a3c;
+  --fg-1: #f5f5f7;
+  --fg-2: #d2d2d7;
+  --fg-3: #a1a1a6;
+  --fg-4: #86868b;
+  --fg-5: #636366;
+  --fg-6: #48484a;
+  --sans: 'Barlow', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --ui-size: 12px;
+  /* The frame: content stays inside 1500px wide and 1024px tall boxes. */
+  --edge: 64px;
+  --edge-x: max(var(--edge), (100vw - 1500px) / 2 + var(--edge));
+  --edge-b: max(var(--edge), (100vh - 1024px) / 2 + var(--edge));
+  --topbar: 72px;
+  /* The shades over the picture, one rule everywhere (owner: the soft tint
+     behind the text only): the frame shade on every frame (under the top bar
+     and the stop bar), and the text pool, a soft dark pool behind each block
+     of free text that moves and fades with it, the stairs' words included. */
+  --shade-frame:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 30%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.35) 30%, transparent 55%),
+    rgba(0, 0, 0, 0.12);
+  --shade-pool: rgba(0, 0, 0, 0.55);
+  --io2: cubic-bezier(0.45, 0, 0.55, 1);
+  --io3: cubic-bezier(0.65, 0, 0.35, 1);
+  --o3: cubic-bezier(0.33, 1, 0.68, 1);
+  --o5: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+html { background: var(--bg); color-scheme: dark; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg-1);
+  font: 400 16px/24px var(--sans);
+  text-wrap: pretty;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a { color: inherit; text-decoration: none; }
+code, pre { font-family: var(--mono); }
+pre { margin: 0; white-space: pre; overflow-x: auto; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-weight: 700; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+::selection { background: var(--fg-4); color: #000; }
+:focus-visible { outline: 2px solid var(--fg-1); outline-offset: 3px; }
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.i { flex: none; width: 24px; height: 24px; }
+
+/* The one label style every control uses. */
+.ui,
+.nav__links a,
+.button,
+.back,
+.stop__links a,
+.step__h,
+.endrow,
+.hero__hint,
+#tour .ft__label,
+#tour .ft__loading-text {
+  font: 600 var(--ui-size)/24px var(--mono);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+/* Code colours: grey steps only. */
+.t { color: var(--fg-1); }
+.a { color: var(--fg-4); }
+.s { color: var(--fg-2); }
+.c { color: var(--fg-5); }
+
+/* Take the tour, Show stills and Show motion are dark like the install box
+   (owner): its fill, its 48px, its grey text, which is also Scroll to fly's
+   and the links' (the top bar's Get started shares the colours). The hover brightens the text only, as the copy button's
+   does. Take the tour adds two down arrows looping. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px 0 16px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--fg-3);
+  cursor: pointer;
+  transition: color 100ms ease-out;
+}
+.button:hover { color: var(--fg-1); transition-duration: 0s; }
+.button__arrows { position: relative; width: 24px; height: 24px; overflow: hidden; }
+.button__arrows svg {
+  position: absolute;
+  inset: 0;
+  width: 24px;
+  height: 24px;
+  animation: arrow-down 1s linear infinite;
+}
+.button__arrows svg + svg { animation-delay: -0.5s; }
+@keyframes arrow-down {
+  0% { translate: 0 -14px; opacity: 0; }
+  50% { translate: 0 0; opacity: 1; }
+  100% { translate: 0 14px; opacity: 0; }
+}
+
+/* Copy button: the glyph shrinks away, a tick draws in, holds, undraws, and
+   the glyph grows back (1.5 s; main.ts holds data-done that long). */
+.copy {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-4);
+  cursor: pointer;
+  transition: color 125ms ease-out;
+}
+.copy:hover { color: var(--fg-1); }
+/* 18px: Tabler's copy glyph then spans 13.5px, as animejs.com's does in its
+   24px box (Tabler draws it 18px wide at 24). */
+.copy svg {
+  position: absolute;
+  inset: 0;
+  width: 18px;
+  height: 18px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Butt ends: a round end would leave a dot where the undrawn dash sits. */
+.copy__tick { stroke-dasharray: 1; stroke-dashoffset: 1; stroke-linecap: butt; }
+.copy[data-done] .copy__glyph { animation: copy-glyph 1.5s both; }
+.copy[data-done] .copy__tick { animation: copy-tick 1.5s both; }
+@keyframes copy-glyph {
+  0% { scale: 1; animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1); }
+  23%, 77% { scale: 0; animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1); }
+  100% { scale: 1; }
+}
+@keyframes copy-tick {
+  0%, 10% { stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1); }
+  33%, 60% { stroke-dashoffset: 0; animation-timing-function: cubic-bezier(0.76, 0, 0.24, 1); }
+  87%, 100% { stroke-dashoffset: -1; }
+}
+
+/* Top bar: part of the opening. It fades in once, with the first arrival
+   (.cascade on the opening stop); after that it is page content, moving with
+   the scroll (--past from main.ts: screen heights past the opening stop, 0
+   above it, so it stays up there), and leaves the Tab order once off screen
+   (data-gone). Sticky and 0 tall, its bar hanging out of it: it takes no
+   room, so the player stays at the top of the page (autoscroll="auto" runs
+   the intro), and it sits in the page like the player's sticky stage, so an
+   iPhone's bounce past the top carries it down with the headline (fixed, it
+   stayed put and the page slid under it). */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 0;
+  padding: 0 24px;
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 calc(var(--past, 0) * -100lvh);
+  transition: opacity 250ms var(--io3), visibility 0s linear 250ms;
+}
+body:has(.stop--hero.cascade[data-active]) .nav {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 467ms var(--io3) 667ms, visibility 0s 667ms;
+}
+body:has(.stop--hero:not(.cascade)) .nav { opacity: 1; visibility: visible; transition: none; }
+body:has(.stop--hero:not(.cascade)) .nav[data-gone] { visibility: hidden; }
+/* Nothing below the player once the footer is folded in: if it fails, the
+   top bar keeps Docs, GitHub and npm reachable. */
+body:has(#tour[error]) .nav { opacity: 1; visibility: visible; translate: none; transition: none; }
+/* The name, in Barlow: the only mark the page has (no icon). The bar's full
+   height is its tap area. */
+.mark {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  font: 700 24px/1 var(--sans);
+  letter-spacing: -0.02em;
+  color: var(--fg-1);
+}
+.nav__in {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1500px;
+  height: var(--topbar);
+  margin: env(safe-area-inset-top) auto 0;
+}
+.nav__links { display: flex; align-items: center; height: 100%; }
+.nav__links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 12px;
+  color: var(--fg-3);
+  transition: color 100ms ease-out;
+}
+.nav__links a:hover { color: var(--fg-1); transition-duration: 0s; }
+.nav__links .i { margin-left: -3px; }
+/* The top bar's button: the colours of Take the tour, Show stills and Show
+   motion (the install box's fill and grey text, owner), in its own 32px
+   (animejs.com's header button is 32px too) and the links' padding. The
+   hover is the links' (text to white). */
+.nav__links .nav__cta {
+  height: 32px;
+  margin-left: 12px;
+  border-radius: 4px;
+  background: var(--bg-3);
+}
+
+/* Phones: the links go behind a menu button, as on animejs.com: two lines
+   that open a panel from the right over the dimmed page (a modal <dialog>,
+   main.ts), each link an icon and a large label, the cross where the button
+   was. The button shows under 900px only. */
+.nav__menu {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.menu {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top) + var(--topbar) + 8px) 32px 24px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  background: var(--bg-2);
+  color: var(--fg-3);
+}
+.menu::backdrop { background: rgba(0, 0, 0, 0.5); }
+.menu[open] { animation: menu-in 300ms var(--o3); }
+.menu[open]::backdrop { animation: fade-in 300ms var(--o3); }
+.menu[data-closing] { animation: menu-out 200ms var(--io3) forwards; }
+.menu[data-closing]::backdrop { animation: fade-out 200ms var(--io3) forwards; }
+@keyframes menu-in { from { translate: 100% 0; } }
+@keyframes menu-out { to { translate: 100% 0; } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+.menu__close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + (var(--topbar) - 44px) / 2);
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-2);
+  cursor: pointer;
+}
+.menu a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 48px;
+  font: 600 20px/1 var(--mono);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--fg-3);
+  transition: color 100ms ease-out;
+}
+.menu a:hover { color: var(--fg-1); transition-duration: 0s; }
+
+/* Stills chosen by the link: the way back, always on screen, where the
+   stop bar sits in motion (stills have none). The page's button (.button),
+   as Take the tour and Show stills. */
+.back {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 11;
+  padding: 0 16px;
+  translate: -50% 0;
+}
+.back[hidden] { display: none; }
+
+/* The player. */
+#tour {
+  --ft-bg: #000;
+  --ft-fg: #f5f5f7;
+  --ft-bar-bottom: 16px;
+  --ft-loading-fade: 800ms;
+  /* The stop bar's top: about 33px (8px gap, 24px labels, 1px line) over
+     its bottom offset. Set here, not on :root, so it follows this element's
+     --ft-bar-bottom, the safe area on phones. */
+  --above-bar: calc(var(--ft-bar-bottom) + 33px);
+  font-family: var(--sans);
+}
+/* Shade over the light grey footage: a little everywhere, more at the top
+   (the top bar, the opening title) and at the bottom (stop texts, cards,
+   the stop bar). */
+#tour .ft__stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--shade-frame);
+  pointer-events: none;
+}
+#tour .ft__overlays { z-index: 2; }
+/* The text pool: the same soft pool behind every block of free text (the
+   headline, a stop's title and lines, the third step's label, a moment's
+   lines), moving with it. Opaque boxes (code, install, buttons) need none.
+   Each stop and moment isolates, so the pool (z-index -1) sits under its
+   text and over the picture in motion and in stills alike. */
+#tour .stop,
+#tour .moment { isolation: isolate; }
+.hero__head::before,
+.stop__text::before,
+.step--card::before,
+.moment__inner::before {
+  content: '';
+  position: absolute;
+  inset: -20% -40% -40% -30%;
+  z-index: -1;
+  background: radial-gradient(closest-side, var(--shade-pool), transparent);
+  transition: opacity 250ms var(--io3);
+  pointer-events: none;
+}
+.stop__text,
+.step--card,
+.moment__inner { position: relative; }
+/* A stop's pool fades with its text; the opening's stays with the headline
+   while it is page content, and arrives with the first cascade. */
+#tour .ft__overlays > .stop:not(.stop--hero):not([data-active]) .stop__text::before,
+#tour .ft__overlays > .stop:not([data-active]) .step--card::before { opacity: 0; }
+#tour .stop--hero.cascade:not([data-active]) .hero__head::before { opacity: 0; }
+#tour .stop--hero.cascade[data-active] .hero__head::before { transition: opacity 467ms var(--io3); }
+
+/* Stop bar: the player's own, restyled. Above the overlays, so cards rise
+   from behind it. */
+#tour .ft__bar {
+  z-index: 3;
+  width: min(560px, 100% - 2 * var(--edge-x));
+  gap: 8px;
+}
+#tour .ft__line { background: var(--fg-6); }
+#tour .ft__fill { background: var(--fg-1); }
+#tour .ft__label {
+  padding: 0;
+  color: var(--fg-4);
+  transition: color 125ms ease-out;
+}
+#tour .ft__label--past { color: var(--fg-3); }
+#tour .ft__label:hover,
+#tour .ft__label[aria-current] { color: var(--fg-1); }
+#tour .ft__dot { width: 6px; height: 6px; }
+
+/* The poster is for scripting off only: this loading screen is solid black,
+   so with scripting on the picture would show for a moment before it. */
+@media (scripting: enabled) {
+  #tour [data-poster] { display: none; }
+}
+
+/* Loading screen: black, the count in headline type. */
+#tour .ft__loading {
+  z-index: 4;
+  gap: 16px;
+  background: var(--bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--fg-4);
+}
+#tour .ft__loading-pct {
+  order: -1;
+  font: 700 64px/0.865 var(--sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--fg-1);
+  opacity: 1;
+}
+#tour .ft__loading-sign { color: var(--fg-4); }
+#tour .ft__loading-bar { width: 200px; height: 1px; border-radius: 0; background: var(--bg-4); }
+
+/* A stop is a full screen: the text bottom left, the card bottom right, both
+   on the frame's bottom line. The box stays opaque and its children move;
+   its visibility waits for them on the way out. */
+#tour .ft__overlays > .stop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 27rem) 1fr 23rem;
+  align-items: end;
+  padding: 0 var(--edge-x) var(--edge-b);
+  opacity: 1;
+  transform: none;
+  pointer-events: none;
+  transition: visibility 0s linear 300ms;
+}
+#tour .ft__overlays > .stop[data-active] { transition: visibility 0s; }
+#tour .stop[data-active] .stop__text,
+#tour .stop[data-active] .code,
+#tour .stop[data-active] .step--card,
+#tour .stop[data-active] .endrow,
+#tour .stop[data-active] .hero__actions { pointer-events: auto; }
+
+.stop__text { grid-column: 1; }
+.stop h2 {
+  max-width: 25rem;
+  font: 700 52px/0.865 var(--sans);
+  color: var(--fg-1);
+}
+.stop__text > p {
+  margin-top: 19px;
+  max-width: 20rem;
+  font: 600 20px/25px var(--sans);
+  color: var(--fg-2);
+}
+
+/* Three links under a rule that draws itself in. */
+.stop__links { position: relative; max-width: 16rem; margin-top: 24px; padding-top: 16px; }
+.stop__links::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--fg-3);
+  transform-origin: left;
+}
+.stop__links a {
+  position: relative;
+  display: block;
+  padding-left: 28px;
+  line-height: 26px;
+  color: var(--fg-3);
+  transition: color 100ms ease-out;
+}
+.stop__links .i {
+  position: absolute;
+  top: 1px;
+  left: -2px;
+  color: var(--fg-4);
+  transition: translate 125ms var(--o3), color 100ms ease-out;
+}
+.stop__links a:hover { color: var(--fg-1); transition-duration: 0s; }
+.stop__links a:hover .i { color: var(--fg-1); translate: 2px 0; }
+
+/* Code card: flat, no caption; the copy button sits in its top right, and
+   the text keeps clear of it. */
+.code {
+  position: relative;
+  grid-column: 3;
+  width: 23rem;
+  margin: 0;
+  padding: 10px 44px 12px 16px;
+  border-radius: 12px;
+  background: var(--bg-3);
+}
+.code pre {
+  font: 400 12px/16px var(--mono);
+  color: var(--fg-3);
+  overflow: hidden;
+}
+.code > .copy {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-radius: 0 12px 0 0;
+  background: var(--bg-3);
+}
+
+/* Stop motion. data-passed (main.ts): the visitor is past this stop, so
+   meets it next going up. animejs.com's stop text is page content: it rises
+   into view going down and comes down from the top going up. Title and line
+   wait on the side they will be met from and leave the way the page moves. */
+#tour .stop h2,
+#tour .stop__text > p,
+#tour .steps {
+  opacity: 0;
+  translate: 0 0.35em;
+  transition: opacity 250ms var(--io3), translate 250ms var(--io3);
+}
+#tour .stop[data-passed]:not([data-active]) h2,
+#tour .stop[data-passed]:not([data-active]) .stop__text > p,
+#tour .stop[data-passed]:not([data-active]) .steps { translate: 0 -0.35em; }
+#tour .stop[data-active] h2,
+#tour .stop[data-active] .stop__text > p,
+#tour .stop[data-active] .steps {
+  opacity: 1;
+  translate: none;
+  transition: opacity 350ms var(--o3), translate 350ms var(--o3);
+}
+#tour .stop[data-active] .stop__text > p,
+#tour .stop[data-active] .steps { transition-delay: 60ms; }
+
+/* The list fades as one piece. Met from above, its rule draws and its links
+   follow 100ms apart, every time. Met from below, both are already complete.
+   Leaving downwards it waits 150ms; upwards it goes at once. Rule and links
+   reset only after the list has faded (250ms). */
+#tour .stop__links { opacity: 0; transition: opacity 250ms var(--o3); }
+#tour .stop[data-passed]:not([data-active]) .stop__links { transition-delay: 150ms; }
+#tour .stop[data-active] .stop__links { opacity: 1; transition: opacity 350ms var(--io3); }
+#tour .stop[data-active][data-passed] .stop__links { transition: opacity 250ms var(--o3); }
+
+#tour .stop__links::before { scale: 0 1; transition: scale 0s linear 250ms; }
+#tour .stop[data-passed] .stop__links::before,
+#tour .stop[data-active] .stop__links::before { scale: 1 1; }
+#tour:not([stills]) .stop[data-active]:not([data-passed]) .stop__links::before {
+  transition: scale 300ms var(--io2);
+}
+
+#tour .stop__links li { opacity: 0; transition: opacity 0s linear 250ms; }
+#tour .stop__links .i {
+  transform: translateX(-4px);
+  transition: transform 0s linear 250ms, translate 125ms var(--o3), color 100ms ease-out;
+}
+#tour .stop[data-passed] .stop__links li,
+#tour .stop[data-active] .stop__links li { opacity: 1; }
+#tour .stop[data-passed] .stop__links .i,
+#tour .stop[data-active] .stop__links .i { transform: none; }
+#tour:not([stills]) .stop[data-active]:not([data-passed]) .stop__links li {
+  transition: opacity 250ms var(--io3) var(--d, 0ms);
+}
+#tour:not([stills]) .stop[data-active]:not([data-passed]) .stop__links .i {
+  transition: transform 250ms var(--io3) var(--d, 0ms), translate 125ms var(--o3), color 100ms ease-out;
+}
+.stop__links li:nth-child(1) { --d: 350ms; }
+.stop__links li:nth-child(2) { --d: 450ms; }
+.stop__links li:nth-child(3) { --d: 550ms; }
+.stop__links li:nth-child(4) { --d: 650ms; }
+
+/* The card rises from below the same way in both directions. */
+#tour .code,
+#tour .step--card {
+  opacity: 0;
+  translate: 0 120%;
+  transition: opacity 250ms var(--io3), translate 250ms var(--io3);
+}
+#tour .stop[data-active] .code,
+#tour .stop[data-active] .step--card { opacity: 1; translate: none; transition-duration: 350ms; }
+#tour .step--card .code,
+#tour .stop[data-active] .step--card .code { opacity: 1; translate: none; transition: none; }
+
+/* The opening screen: the headline top left, install and the button bottom
+   left, "Scroll to fly" bottom right (the player has no hint of its own; it
+   belongs in the first card). */
+#tour .ft__overlays > .stop--hero { display: block; padding: 0; }
+.hero__head {
+  position: absolute;
+  top: calc(var(--topbar) + 64px);
+  left: var(--edge-x);
+  width: 27rem;
+  max-width: calc(100% - 2 * var(--edge-x));
+}
+.hero__head h1 { font: 700 64px/0.865 var(--sans); color: var(--fg-1); }
+.hero__head p {
+  margin-top: 23px;
+  max-width: 21rem;
+  font: 600 20px/25px var(--sans);
+  color: var(--fg-2);
+}
+.hero__actions {
+  position: absolute;
+  left: var(--edge-x);
+  bottom: var(--edge-b);
+  display: flex;
+  gap: 16px;
+}
+.hero__hint {
+  position: absolute;
+  right: var(--edge-x);
+  bottom: calc(var(--edge-b) + 12px);
+  color: var(--fg-3);
+}
+.install {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 44px 0 16px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  font: 400 14px/1 var(--mono);
+  color: var(--fg-3);
+}
+.install > .copy { position: absolute; top: 0; right: 0; }
+
+/* After its first arrival the opening screen is page content, as
+   animejs.com's first screen: the headline moves 1:1 with the scroll, the
+   bottom row and hint drop 200px over the first 0.69 screen and fade out
+   between 0.41 and 0.83 screen (measured there, the same both ways). It
+   stays shown, active or not, until main.ts marks it data-gone. */
+#tour .ft__overlays > .stop--hero:not(.cascade) { visibility: visible; transition: none; }
+#tour .ft__overlays > .stop--hero:not(.cascade)[data-gone] { visibility: hidden; }
+#tour .stop--hero:not(.cascade):not([data-gone]) .hero__actions { pointer-events: auto; }
+#tour .hero__head { translate: 0 calc(var(--past, 0) * -100lvh); }
+#tour .hero__actions,
+#tour .hero__hint {
+  translate: 0 calc(clamp(0, var(--past, 0) / 0.69, 1) * 200px);
+  opacity: calc(1 - clamp(0, (var(--past, 0) - 0.41) / 0.42, 1));
+}
+
+/* First arrival only (.cascade, taken off by main.ts on the first leave or
+   a first meeting from below): letters, then words 667ms after the first
+   letter, each on Anime.js's eased 25ms stagger (--d, main.ts), then the
+   top bar, the row and the hint fade in over 467ms without rising (all
+   measured on animejs.com). The base transition lets a cascade cut short by
+   leaving finish quickly. Words never break inside (.wrd). */
+.wrd { display: inline-block; white-space: nowrap; }
+.ch, .wd { display: inline-block; }
+#tour .stop--hero .ch,
+#tour .stop--hero .wd {
+  transition: opacity 350ms var(--o3), translate 350ms var(--o3);
+}
+#tour .stop--hero .hero__actions > *,
+#tour .hero__hint > span { transition: opacity 350ms var(--o3); }
+#tour .stop--hero.cascade:not([data-active]) .ch,
+#tour .stop--hero.cascade:not([data-active]) .wd { opacity: 0; translate: 0.35em 0; }
+#tour .stop--hero.cascade:not([data-active]) .hero__actions > *,
+#tour .stop--hero.cascade:not([data-active]) .hero__hint > span { opacity: 0; }
+#tour .stop--hero.cascade[data-active] .ch {
+  transition:
+    opacity 1000ms var(--o5) var(--d, 0ms),
+    translate 1000ms var(--o5) var(--d, 0ms);
+}
+#tour .stop--hero.cascade[data-active] .wd {
+  transition:
+    opacity 1000ms var(--o5) calc(667ms + var(--d, 0ms)),
+    translate 1000ms var(--o5) calc(667ms + var(--d, 0ms));
+}
+#tour .stop--hero.cascade[data-active] .hero__actions > *,
+#tour .stop--hero.cascade[data-active] .hero__hint > span { transition: opacity 467ms var(--io3) 667ms; }
+
+/* Passing moments: centred between the top bar and the stop bar, as
+   letramy's. --ft-moment (0 to 1, from the player) drifts the inner block. */
+#tour .ft__overlays > .moment {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--topbar) + 16px) var(--edge-x) calc(var(--ft-bar-bottom) + 72px);
+  text-align: center;
+}
+.moment__inner {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  translate: 0 calc((0.5 - var(--ft-moment, 0.5)) * 60px);
+}
+.moment__line {
+  font: 700 52px/0.95 var(--sans);
+  letter-spacing: -0.025em;
+  color: var(--fg-1);
+  text-wrap: balance;
+}
+.moment__sub { max-width: 30rem; font: 600 20px/25px var(--sans); color: var(--fg-2); }
+/* The page's button, as Take the tour; no arrows, so even sides. */
+.moment__go { margin-top: 8px; padding: 0 16px; }
+
+/* The frame counter, over the rooftops: the big number alone. Mono digits,
+   so it keeps its width as it counts; the total hangs off its right edge,
+   so the number itself stays centred. */
+.frames__count {
+  position: relative;
+  font: 400 min(13vw, 20vh)/0.9 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--fg-1);
+  white-space: nowrap;
+}
+.frames__of {
+  position: absolute;
+  left: 100%;
+  bottom: 0.45em;
+  margin-left: 0.6em;
+  font-size: 0.22em;
+  letter-spacing: 0;
+  color: var(--fg-3);
+}
+
+/* The stairs: a field of setting names (letramy's languages moment). --p is
+   the player's --ft-moment, 0.8 (every word in, none leaving) where it is not
+   set. --out takes the words away over the last 10%, and each word comes
+   into focus over 12% from its --at, drifting outward a little and growing
+   from 90%, its pool with it. */
+#tour .ft__overlays > .moment--field,
+.moment--field {
+  --p: var(--ft-moment, 0.8);
+  --out: clamp(0, (1 - var(--p)) / 0.1, 1);
+  padding: 0;
+}
+/* --L, the large size: 80px on a 1440x900 screen, so "return-to-first" in
+   mono still clears the left edge. */
+.field { --L: min(5.6vw, 9vh); position: absolute; inset: 0; overflow: hidden; }
+/* Each word's own pool: inside the word (its transform makes it a stacking
+   context), so it moves, scales, blurs and fades with it. */
+.field__w::before {
+  content: '';
+  position: absolute;
+  inset: -45% -25%;
+  z-index: -1;
+  background: radial-gradient(closest-side, var(--shade-pool), transparent);
+  pointer-events: none;
+}
+.field__w {
+  --t: clamp(0, (var(--p) - var(--at)) / 0.12, 1);
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  white-space: nowrap;
+  font: 400 calc(var(--L) * var(--tier, 1))/1 var(--mono);
+  color: var(--fg-1);
+  opacity: calc(var(--t) * var(--out) * var(--a, 1));
+  transform: translate(-50%, -50%)
+    translate(calc((var(--x) - 50) / 50 * 14px * var(--p)), calc((var(--y) - 50) / 50 * 10px * var(--p)))
+    scale(calc(0.9 + 0.1 * var(--t) + 0.04 * var(--p)));
+  filter: blur(calc((1 - var(--t)) * 8px));
+}
+.field__w--1 { --tier: 0.65; --a: 0.82; }
+.field__w--2 { --tier: 0.45; --a: 0.6; }
+
+/* The last stop: Get started, and the end of the page. Steps 01 and 02 under
+   the title, 03 in the card slot, and the end row (Docs, GitHub, npm; MIT)
+   on the opening screen's bottom row, in the same place and type as its
+   install box, tour button and Scroll to fly (owner). */
+.steps { display: grid; gap: 16px; max-width: 24rem; margin-top: 24px; }
+.step { display: grid; gap: 4px; }
+.step__h { display: flex; gap: 8px; color: var(--fg-2); }
+.step__n { color: var(--fg-3); }
+.cmd {
+  position: relative;
+  padding: 12px 44px 12px 16px;
+  border-radius: 4px;
+  background: var(--bg-3);
+}
+.cmd pre { font: 400 13px/20px var(--mono); color: var(--fg-3); }
+.cmd > .copy { position: absolute; top: 0; right: 0; }
+/* A wider card slot here: the element's first line is the longest code on
+   the page, and the copy button sits at its end. */
+#tour .ft__overlays > .stop--start {
+  grid-template-columns: minmax(0, 27rem) 1fr 25rem;
+  padding-bottom: calc(var(--edge-b) + 80px);
+}
+.step--card { grid-column: 3; }
+.step--card .code { grid-column: auto; width: 100%; }
+.endrow {
+  position: absolute;
+  left: var(--edge-x);
+  right: var(--edge-x);
+  bottom: calc(var(--edge-b) + 12px);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--fg-3);
+}
+.endrow__links { display: flex; gap: 16px; }
+/* 44px tall tap areas that meet across the gaps, the row's look unchanged. */
+.endrow a {
+  margin: -10px -8px;
+  padding: 10px 8px;
+  color: var(--fg-3);
+  transition: color 100ms ease-out;
+}
+.endrow a:hover { color: var(--fg-1); transition-duration: 0s; }
+#tour .endrow { opacity: 0; transition: opacity 250ms var(--io3); }
+#tour .stop[data-active] .endrow { opacity: 1; transition: opacity 350ms var(--io3) 200ms; }
+
+/* Stills (reduced motion, or ?mode=stills): each stop and moment is one
+   screen over its still, in the flow; the top bar scrolls away with the
+   page. */
+body:has(#tour[stills]) .nav { position: absolute; inset: 0 0 auto; opacity: 1; visibility: visible; translate: none; transition: none; }
+#tour[stills] .stop {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 27rem) 1fr 23rem;
+  align-items: end;
+  padding: calc(var(--topbar) + 64px) var(--edge-x) var(--edge-b);
+}
+/* Every stills screen carries the frame shade, as every frame in motion
+   does; the text pools come with the text. */
+#tour[stills] .stop,
+#tour[stills] .moment { background: var(--shade-frame); }
+#tour[stills] .stop--hero { display: block; }
+#tour[stills] .stop--start { row-gap: 48px; padding-bottom: 96px; }
+#tour[stills] .endrow { position: static; grid-column: 1 / -1; }
+/* A moment fills its screen (the player's .ft__still--moment) over its
+   still. */
+#tour[stills] .moment {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 64px var(--edge-x);
+  text-align: center;
+}
+#tour[stills] .moment--field { --p: 0.8; padding: 0; }
+#tour[stills] .field__w { filter: none; }
+
+@media (max-width: 899px) {
+  :root { --edge: 16px; --topbar: 56px; --ui-size: 13px; }
+  #tour { --ft-bar-bottom: max(16px, env(safe-area-inset-bottom)); }
+
+  .nav { padding-inline: 16px; }
+  .nav__in { border-bottom: 1px solid var(--bg-4); }
+  .nav__links { display: none; }
+  .nav__menu { display: grid; }
+
+  :root {
+    --shade-frame:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.3) 32%, transparent 48%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent 38%),
+      rgba(0, 0, 0, 0.12);
+  }
+  #tour .ft__bar { width: calc(100% - 32px); }
+  #tour .ft__dot { width: 8px; height: 8px; }
+
+  /* Phones: the title and line at the top, the card above the stop bar. The
+     text cross-fades in place both ways, as on animejs.com's phone page.
+     Nothing shows through the stop bar: a card rising into place, or the
+     opening's bottom row dropping away, is cut at the bar's top. */
+  #tour .ft__overlays > .stop {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    align-items: start;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(var(--above-bar) + 12px);
+    clip-path: inset(0 0 var(--above-bar) 0);
+  }
+  .stop__text { grid-row: 1; }
+  .code { grid-column: 1; grid-row: 3; width: 100%; }
+  .stop h2 { font-size: 32px; }
+  .stop__text > p { margin-top: 12px; max-width: none; font-size: 16px; line-height: 20px; }
+  .stop__links { display: none; }
+  #tour .stop h2,
+  #tour .stop__text > p,
+  #tour .steps,
+  #tour .stop[data-passed]:not([data-active]) h2,
+  #tour .stop[data-passed]:not([data-active]) .stop__text > p,
+  #tour .stop[data-passed]:not([data-active]) .steps { translate: none; transition: opacity 250ms var(--io3); }
+  #tour .stop[data-active] h2,
+  #tour .stop[data-active] .stop__text > p,
+  #tour .stop[data-active] .steps { transition: opacity 250ms var(--io3); }
+  .code pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  .hero__head { top: calc(var(--topbar) + 26px + env(safe-area-inset-top)); width: auto; }
+  .hero__head h1 { font-size: 40px; }
+  .hero__head p { margin-top: 15px; font-size: 16px; line-height: 20px; text-wrap: balance; }
+  .hero__actions { bottom: calc(var(--above-bar) + 16px); }
+  .install { display: none; }
+  .hero__hint { bottom: calc(var(--above-bar) + 28px); }
+
+  /* The last stop stacks from the bottom up, above the stop bar, clear of
+     the top (the address bar can let the page run 70px past the last stop).
+     Phones get the install command here; the opening screen hides it. */
+  #tour .ft__overlays > .stop--start {
+    grid-template-rows: none;
+    align-content: end;
+    align-items: end;
+    gap: 12px;
+    padding-top: 86px;
+  }
+  .stop--start .stop__text,
+  .stop--start .step--card { grid-row: auto; grid-column: 1; }
+  .steps { gap: 12px; margin-top: 16px; max-width: none; }
+  .steps .install { display: flex; }
+  .cmd pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  /* On the opening's bottom row: Scroll to fly sits 28px above the bar. */
+  .endrow { position: static; margin-bottom: 16px; }
+
+  #tour .ft__overlays > .moment { padding-inline: 16px; }
+  .moment__line { font-size: 40px; }
+  .moment__sub { font-size: 16px; line-height: 20px; }
+  /* The total moves under the number: there is no room beside it. A step
+     lighter, for contrast at 13px over the picture. */
+  .frames__count { font-size: min(26vw, 15vh); }
+  .frames__of { position: static; display: block; margin: 8px 0 0; font-size: 13px; line-height: 1; letter-spacing: 0.01em; color: var(--fg-2); }
+  .field { --L: min(12vw, 6.4vh); }
+  .field__w {
+    left: calc(var(--xm) * 1%);
+    top: calc(var(--ym) * 1%);
+    filter: none;
+    transform: translate(-50%, -50%)
+      translate(calc((var(--xm) - 50) / 50 * 6px * var(--p)), calc((var(--ym) - 50) / 50 * 8px * var(--p)))
+      scale(calc(0.9 + 0.1 * var(--t) + 0.04 * var(--p)));
+  }
+  .field__w--2 { display: none; }
+
+  #tour[stills] .stop {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    gap: 24px;
+    padding: 96px 16px 48px;
+  }
+  /* One screen like the rest: less room above, the Show motion button's
+     room below. */
+  #tour[stills] .stop--start { padding-top: 48px; padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 72px); }
+  /* Stills chosen by the link: Show motion takes the stop bar's place (its
+     bottom offset, 48px tall), so the content clears it as it clears the
+     bar. */
+  body:has(.back:not([hidden])) #tour[stills] { --above-bar: calc(max(16px, env(safe-area-inset-bottom)) + 48px); }
+  body:has(.back:not([hidden])) #tour[stills] .stop:not(.stop--start) { padding-bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); }
+}
+
+/* Short phones (a 375x667 iPhone with its bars showing, about 560px): the
+   step names go to screen readers only, so the last stop still fits. An
+   iPhone 14 (664px) keeps them. */
+@media (max-width: 899px) and (max-height: 620px) {
+  .stop--start .step__h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .stop--start h2 { font-size: 28px; }
+  #tour .ft__overlays > .stop--start { gap: 8px; padding-top: 72px; }
+  .steps { gap: 8px; margin-top: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button__arrows svg { animation: none; }
+  .button__arrows svg + svg { display: none; }
+  .copy[data-done] .copy__glyph { animation: none; scale: 0; }
+  .copy[data-done] .copy__tick { animation: none; stroke-dashoffset: 0; }
+  .menu[open],
+  .menu[open]::backdrop,
+  .menu[data-closing],
+  .menu[data-closing]::backdrop { animation: none; }
+}

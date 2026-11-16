@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "paths": {
+      "flythrough": ["../../src/index.ts"],
+      "flythrough/vue": ["../../src/vue.ts"]
+    }
+  },
+  "include": ["src"]
+}

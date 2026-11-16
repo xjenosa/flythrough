@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>player test</title>
+    <style>
+      html, body { margin: 0; background: #111; color: #eee; font: 16px/1.5 system-ui, sans-serif; }
+      .host { min-height: 150vh; padding: 2rem; box-sizing: border-box; }
+      .host--above { background: #1d2333; }
+      .host--below { background: #1d3323; }
+      .ov { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); padding: 1rem 1.5rem; background: rgba(0, 0, 0, 0.6); border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <section class="host host--above" id="above"><h1>Host content above</h1><p>Not the player's.</p></section>
+    <div id="slot"></div>
+    <section class="host host--below" id="below"><h1>Host content below</h1><p>Not the player's either.</p></section>
+    <div id="slot2"></div>
+    <section class="host host--below" id="below2"><h1>Below the second player</h1></section>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

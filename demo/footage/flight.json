@@ -1,0 +1,16 @@
+{
+  "frames": 720,
+  "stops": [
+    { "id": "entrance", "frame": 49, "focus": [0.5, 0.55] },
+    { "id": "lobby", "frame": 121, "focus": [0.6, 0.55] },
+    { "id": "room", "frame": 313, "focus": [0.5, 0.6] },
+    { "id": "terrace", "frame": 493, "focus": [0.42, 0.55] },
+    { "id": "overview", "frame": 720, "focus": [0.45, 0.5], "from": 640 }
+  ],
+  "moments": [
+    { "id": "stair", "from": 162, "to": 240 },
+    { "id": "window", "from": 360, "to": 440 },
+    { "id": "frames", "from": 556, "to": 632 }
+  ],
+  "pace": { "legs": [0.45, 1.3, 1.7, 1.7, 1.6], "hold": 0 }
+}

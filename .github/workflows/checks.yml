@@ -1,0 +1,63 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # The unit tests on all three systems, with ffmpeg installed: the frame
+  # maker's end-to-end test makes real frames, so `npx flythrough frames` is
+  # checked on a Mac and on Windows, not only on Linux.
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install ffmpeg
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) sudo apt-get update && sudo apt-get install -y ffmpeg ;;
+            macOS) brew install ffmpeg ;;
+            Windows) choco install ffmpeg -y --no-progress ;;
+          esac
+      - run: npm ci
+      - name: Unit tests (the frame maker test must run, not skip)
+        shell: bash
+        run: |
+          npm test 2>&1 | tee test.log
+          if grep -q "# skipped [1-9]" test.log; then echo "a test was skipped: is ffmpeg on PATH?"; exit 1; fi
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node -e "import('flythrough').then(() => import('flythrough/manifest')).then(() => import('flythrough/debug')).then(() => import('flythrough/no-gsap')).then(() => import('flythrough/react')).then(() => import('flythrough/vue'))"

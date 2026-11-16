@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>flythrough: turn a video into a scroll</title>
+    <meta name="description" content="A web component that plays a video's frames as the page scrolls and comes to rest at the stops you name." />
+    <meta name="theme-color" content="#000000" />
+    <!-- No tab icon (owner): an empty one, so browsers do not ask the server
+         for /favicon.ico and get a 404. -->
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <!-- Every icon on the page is one family, as animejs.com's are: 24px
+         line icons at 1.5px with round ends; GitHub as its own mark, npm as
+         a package (its mark is the word npm, beside the word npm).
+         From Tabler Icons (https://tabler.io/icons), MIT License, Copyright
+         (c) 2020-2024 Paweł Kuna. The copy glyph and tick are in main.ts. -->
+    <svg class="sprite" aria-hidden="true">
+      <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 18l6-6M13 6l6 6" /></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M18 13l-6 6M6 13l6 6" /></symbol>
+      <symbol id="i-docs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1-2-2v-14a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z" /><path d="M9 9h1M9 13h6M9 17h6" /></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2c2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2a4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0c-2.4-1.6-3.5-1.3-3.5-1.3a4.2 4.2 0 0 0-.1 3.2a4.6 4.6 0 0 0-1.3 3.2c0 4.6 2.7 5.7 5.5 6c-.6 .6-.6 1.2-.5 2v3.5" /></symbol>
+      <symbol id="i-npm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9l-8 4.5l-8-4.5v-9l8-4.5M12 12l8-4.5M12 12v9M12 12l-8-4.5M16 5.25l-8 4.5" /></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16M4 16h16" /></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12M6 6l12 12" /></symbol>
+    </svg>
+
+    <!-- The top bar belongs to the opening screen, as animejs.com's scrolls
+         away with its first screen; the last stop carries its mirror row. -->
+    <header class="nav">
+      <div class="nav__in">
+        <a class="mark" href="#">flythrough</a>
+        <nav class="nav__links" aria-label="Elsewhere">
+          <a href="https://github.com/xjenosa/flythrough#readme"><svg class="i" aria-hidden="true"><use href="#i-docs" /></svg>Docs</a>
+          <a href="https://github.com/xjenosa/flythrough"><svg class="i" aria-hidden="true"><use href="#i-github" /></svg>GitHub</a>
+          <a href="https://www.npmjs.com/package/flythrough"><svg class="i" aria-hidden="true"><use href="#i-npm" /></svg>npm</a>
+          <a class="nav__cta" href="#get-started" data-go="last">Get started</a>
+        </nav>
+        <button class="nav__menu" type="button" aria-label="Menu" aria-controls="menu" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-menu" /></svg></button>
+      </div>
+    </header>
+
+    <!-- Phones: the top bar's links behind its menu button, as on
+         animejs.com (main.ts opens it). -->
+    <dialog class="menu" id="menu" aria-label="Menu">
+      <button class="menu__close" type="button" aria-label="Close the menu"><svg class="i" aria-hidden="true"><use href="#i-x" /></svg></button>
+      <nav aria-label="Elsewhere">
+        <a href="https://github.com/xjenosa/flythrough#readme"><svg class="i" aria-hidden="true"><use href="#i-docs" /></svg>Docs</a>
+        <a href="https://github.com/xjenosa/flythrough"><svg class="i" aria-hidden="true"><use href="#i-github" /></svg>GitHub</a>
+        <a href="https://www.npmjs.com/package/flythrough"><svg class="i" aria-hidden="true"><use href="#i-npm" /></svg>npm</a>
+        <a href="#get-started" data-go="last"><svg class="i" aria-hidden="true"><use href="#i-down" /></svg>Get started</a>
+      </nav>
+    </dialog>
+
+    <!-- In stills chosen by the link (?mode=stills) or given to a data saver:
+         always on screen, so the way back never has to be found (owner).
+         main.ts shows it. -->
+    <a class="button back" href="./" data-motion-link hidden>Show motion</a>
+
+    <main>
+      <fly-through id="tour" src="tour/manifest.json" intro loading-text="Loading the flight" bar-label="Tour stops">
+        <!-- The poster: the frame the flight opens on (frame 1, with intro),
+             the page's picture with scripting off (style.css hides it
+             otherwise: the loading screen here is solid). -->
+        <picture data-poster>
+          <source media="(orientation: portrait)" srcset="tour/portrait/0001.webp" />
+          <img src="tour/landscape/0001.webp" alt="" />
+        </picture>
+        <section class="stop stop--hero cascade" data-stop="entrance">
+          <div class="hero__head">
+            <h1 data-split="letters">Turn a video<br />into a scroll.</h1>
+            <p data-split="words">A web component that plays your footage as the page scrolls.</p>
+          </div>
+          <div class="hero__actions">
+            <div class="install">
+              <code>npm i flythrough gsap</code>
+              <button class="copy" type="button" data-copy="npm i flythrough gsap" aria-label="Copy the install command"></button>
+            </div>
+            <button class="button" type="button" data-tour>
+              Take the tour
+              <span class="button__arrows" aria-hidden="true"><svg><use href="#i-down" /></svg><svg><use href="#i-down" /></svg></span>
+            </button>
+          </div>
+          <p class="hero__hint"><span>Scroll to fly</span></p>
+        </section>
+
+        <section class="stop" data-stop="lobby">
+          <div class="stop__text">
+            <h2>Stops along the way.</h2>
+            <p>Name the places that matter. Each one gets a label on the bar below and a card like this one.</p>
+            <ul class="stop__links">
+              <li><a href="https://github.com/xjenosa/flythrough#stops"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Named stops</a></li>
+              <li><a href="https://github.com/xjenosa/flythrough#pacing"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>A pace for each leg</a></li>
+              <li><a href="https://github.com/xjenosa/flythrough#astro"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>The same in Astro</a></li>
+            </ul>
+          </div>
+          <figure class="code">
+            <pre><code><span class="t">&lt;fly-through&gt;</span>
+  <span class="t">&lt;div</span> <span class="a">data-stop</span>=<span class="s">"lobby"</span>
+    <span class="a">data-frame</span>=<span class="s">"121"</span>
+    <span class="a">data-label</span>=<span class="s">"Lobby"</span><span class="t">&gt;</span>Lobby<span class="t">&lt;/div&gt;</span>
+<span class="t">&lt;/fly-through&gt;</span></code></pre>
+            <button class="copy" type="button" aria-label="Copy the code"></button>
+          </figure>
+        </section>
+
+        <!-- The stairs: the player's own setting names arrive one at a time,
+             letramy's languages moment with our words. --x/--y place a word on
+             computers, --xm/--ym on phones (% of the screen); --at is when it
+             arrives (0 to 1 of the moment). field__w--1 is medium, --2 small. -->
+        <div class="moment moment--field" data-moment="stair">
+          <p class="sr">Settings: intro, glide, snap, reach, legs, hold, fit, mode, autoscroll, loading-text, return-to-first and length.</p>
+          <div class="field" aria-hidden="true">
+            <span class="field__w" style="--x: 50; --y: 21; --xm: 62; --ym: 39; --at: 0.1">intro</span>
+            <span class="field__w" style="--x: 50; --y: 80; --xm: 40; --ym: 61; --at: 0.133">glide</span>
+            <span class="field__w" style="--x: 23.5; --y: 33.5; --xm: 34; --ym: 27; --at: 0.256">snap</span>
+            <span class="field__w" style="--x: 76.5; --y: 66.5; --xm: 60; --ym: 73; --at: 0.302">reach</span>
+            <span class="field__w" style="--x: 24; --y: 66.5; --xm: 38; --ym: 85; --at: 0.341">legs</span>
+            <span class="field__w" style="--x: 76.5; --y: 33.5; --xm: 62; --ym: 15; --at: 0.395">hold</span>
+            <span class="field__w field__w--1" style="--x: 13; --y: 50; --xm: 16; --ym: 50; --at: 0.411">fit</span>
+            <span class="field__w field__w--1" style="--x: 88; --y: 50; --xm: 84; --ym: 50; --at: 0.458">mode</span>
+            <span class="field__w field__w--2" style="--x: 14; --y: 13; --at: 0.52">autoscroll</span>
+            <span class="field__w field__w--2" style="--x: 86; --y: 87; --at: 0.55">loading-text</span>
+            <span class="field__w field__w--2" style="--x: 14; --y: 87; --at: 0.59">return-to-first</span>
+            <span class="field__w field__w--2" style="--x: 86; --y: 13; --at: 0.62">length</span>
+          </div>
+        </div>
+
+        <section class="stop" data-stop="room">
+          <div class="stop__text">
+            <h2>It comes to rest.</h2>
+            <p>Stop scrolling near a card and it glides to that stop. It never pulls on the rest of your page.</p>
+            <ul class="stop__links">
+              <li><a href="https://github.com/xjenosa/flythrough#behaviour"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Half a second, then a glide</a></li>
+              <li><a href="https://github.com/xjenosa/flythrough#attributes"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Glide, reach and snap</a></li>
+              <li><a href="https://github.com/xjenosa/flythrough#lenis"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Glides through Lenis</a></li>
+            </ul>
+          </div>
+          <figure class="code">
+            <pre><code><span class="c">&lt;!-- Rests by itself. To tune: --&gt;</span>
+<span class="t">&lt;fly-through</span> <span class="a">glide</span>=<span class="s">"scaled"</span>
+  <span class="a">reach</span>=<span class="s">"0.38"</span><span class="t">&gt;</span></code></pre>
+            <button class="copy" type="button" aria-label="Copy the code"></button>
+          </figure>
+        </section>
+
+        <!-- Reduced motion. The link reloads this page in stills; there,
+             main.ts removes it and shows the fixed .back button instead. -->
+        <div class="moment" data-moment="window">
+          <div class="moment__inner">
+            <p class="moment__line">Reduced motion gets stills.</p>
+            <p class="moment__sub">If a visitor's device asks for less motion, the flight becomes one still per screen, and the page scrolls as usual.</p>
+            <a class="button moment__go" href="?mode=stills" data-stills-link>Show stills</a>
+          </div>
+        </div>
+
+        <section class="stop" data-stop="terrace">
+          <div class="stop__text">
+            <h2>Phones get their own cut.</h2>
+            <p>On a tall screen the picture is cropped around a point you choose for each stop, so the subject stays in view.</p>
+            <ul class="stop__links">
+              <li><a href="https://github.com/xjenosa/flythrough#making-frames"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Upright and wide frame sets</a></li>
+              <li><a href="https://github.com/xjenosa/flythrough#preloading-frames"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Preload the right set</a></li>
+              <li><a href="https://github.com/xjenosa/flythrough#browsers"><svg class="i" aria-hidden="true"><use href="#i-arrow" /></svg>Tested on phones</a></li>
+            </ul>
+          </div>
+          <figure class="code">
+            <pre><code><span class="c">&lt;!-- the subject's place, 0 to 1 --&gt;</span>
+<span class="t">&lt;div</span> <span class="a">data-stop</span>=<span class="s">"terrace"</span>
+  <span class="a">data-frame</span>=<span class="s">"493"</span>
+  <span class="a">data-focus</span>=<span class="s">"0.42 0.55"</span><span class="t">&gt;</span></code></pre>
+            <button class="copy" type="button" aria-label="Copy the code"></button>
+          </figure>
+        </section>
+
+        <!-- The frame counter, its big number only (owner): main.ts writes the
+             frame on screen while this moment shows, and the total from
+             footage/flight.json. -->
+        <div class="moment moment--frames" data-moment="frames">
+          <div class="moment__inner">
+            <p class="frames__count"><span class="sr">Frame </span><span class="frames__now">0594</span><span class="frames__of"> / <span data-total="frames-padded">0720</span></span></p>
+          </div>
+        </div>
+
+        <!-- The last stop is the end of the page (get started inside the
+             flight). Its end row sits on the opening screen's bottom row. -->
+        <section class="stop stop--start" data-stop="overview" id="get-started">
+          <div class="stop__text">
+            <h2>Get started.</h2>
+            <ol class="steps">
+              <li class="step">
+                <p class="step__h"><span class="step__n">01</span>Install</p>
+                <div class="install">
+                  <code>npm i flythrough gsap</code>
+                  <button class="copy" type="button" data-copy="npm i flythrough gsap" aria-label="Copy the install command"></button>
+                </div>
+              </li>
+              <li class="step">
+                <p class="step__h"><span class="step__n">02</span>Make the frames</p>
+                <div class="cmd">
+                  <pre><code>npx -p flythrough -p sharp \
+  flythrough frames flight.mp4 \
+  <span class="a">--out</span> public/tour</code></pre>
+                  <button class="copy" type="button" aria-label="Copy the command"></button>
+                </div>
+              </li>
+            </ol>
+          </div>
+          <div class="step step--card">
+            <p class="step__h"><span class="step__n">03</span>Add the element</p>
+            <figure class="code">
+              <pre><code><span class="t">&lt;fly-through</span>
+  <span class="a">src</span>=<span class="s">"/tour/manifest.json"</span><span class="t">&gt;</span>
+  <span class="t">&lt;div</span> <span class="a">data-stop</span>=<span class="s">"door"</span>
+    <span class="a">data-frame</span>=<span class="s">"49"</span><span class="t">&gt;</span>Hello<span class="t">&lt;/div&gt;</span>
+<span class="t">&lt;/fly-through&gt;</span>
+<span class="t">&lt;script</span> <span class="a">type</span>=<span class="s">"module"</span><span class="t">&gt;</span>
+  <span class="t">import</span> <span class="s">'flythrough'</span>;
+  <span class="t">import</span> <span class="s">'flythrough/style.css'</span>;
+<span class="t">&lt;/script&gt;</span></code></pre>
+              <button class="copy" type="button" aria-label="Copy index.html"></button>
+            </figure>
+          </div>
+          <footer class="endrow">
+            <nav class="endrow__links" aria-label="Read on">
+              <a href="https://github.com/xjenosa/flythrough#readme">Docs</a>
+              <a href="https://github.com/xjenosa/flythrough">GitHub</a>
+              <a href="https://www.npmjs.com/package/flythrough">npm</a>
+            </nav>
+            <p class="endrow__licence"><a href="https://github.com/xjenosa/flythrough/blob/main/LICENSE">MIT</a> · xjenosa</p>
+          </footer>
+        </section>
+      </fly-through>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

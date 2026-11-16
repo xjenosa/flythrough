@@ -1,0 +1,44 @@
+name: demo
+
+# Builds the demo and publishes it to GitHub Pages
+# (https://xjenosa.github.io/flythrough/), the demo's only public home. The
+# frames are made here from demo/footage, never committed. vite's base is
+# './', so the site works under the /flythrough/ path.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a newer push waits rather than cutting one off.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: npm ci
+      - run: npm run demo:frames
+      - run: npm run demo:build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: demo/dist
+      - id: deployment
+        uses: actions/deploy-pages@v5

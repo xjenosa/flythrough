@@ -1,0 +1,279 @@
+/* <fly-through> base styles. Everything is overridable from the host page;
+   custom properties are the knobs. Colours derive from --ft-fg and --ft-bg
+   (color-mix, after an rgba line for browsers without it: the same look on
+   the default white on black). */
+fly-through {
+  --ft-bg: #000;
+  --ft-fg: #fff;
+  --ft-accent: var(--ft-fg);
+  --ft-bar-bottom: 20px;
+  --ft-loading-fade: 450ms;
+  display: block;
+  background: var(--ft-bg);
+  color: var(--ft-fg);
+}
+
+/* Stops and moments wait hidden until the player moves them into its stage
+   or its stills; else they flash as plain text before the script runs (or
+   while stills load). Without scripting they are the page's content. */
+@media (scripting: enabled) {
+  fly-through > [data-stop],
+  fly-through > [data-moment] { visibility: hidden; }
+  /* Until it is ready the player keeps one screen (or its box): before its
+     script has arrived it is only as tall as its hidden cards, so what is
+     below it showed at the top of the screen and then jumped down; stills
+     had the same wait for their pictures. */
+  fly-through:not([ready], [error]) { min-height: var(--ft-stage-height, 100dvh); }
+}
+
+/* The poster: a picture the host puts in the player (data-poster on an
+   <img>, or on a <picture> to give phones their own frame) of the frame the
+   player opens on. It fills the first screen from the first paint until the
+   canvas has drawn, under the loading screen; with scripting off it is the
+   player's picture, above its stops. */
+fly-through > [data-poster] {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
+fly-through [data-poster] img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+fly-through [data-poster],
+fly-through [data-poster] img { object-fit: cover; }
+fly-through[fit='contain'] [data-poster],
+fly-through[fit='contain'] [data-poster] img { object-fit: contain; }
+
+/* A player in a box. The host gives the stage a height on the element
+   (--ft-stage-height: in vh or px, not dvh or %, so it holds still while a
+   phone's address bar shows and hides) and whatever width it likes; the
+   player then sets the boxed attribute. The stage is that tall and stays in
+   the middle of the screen while its track scrolls by. Under [boxed] only:
+   the full-screen rules below are not touched. */
+fly-through[boxed] { background: none; }
+fly-through[boxed] .ft__stage {
+  height: var(--ft-stage-height);
+  top: max(0px, calc((100vh - var(--ft-stage-height)) / 2));
+}
+fly-through[boxed] .ft__still { min-height: var(--ft-stage-height); }
+fly-through[boxed] > [data-poster] { height: var(--ft-stage-height); }
+
+.ft__track { position: relative; }
+/* No usable manifest, or no frame loads: nothing to show, so take no room.
+   The children still in place are stills that never got their manifest. */
+fly-through[error] .ft__track,
+fly-through[error] .ft__stills,
+fly-through[error] > [data-poster],
+fly-through[error] > [data-stop],
+fly-through[error] > [data-moment] { display: none; }
+
+.ft__stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--ft-bg);
+}
+
+/* What fills its box: the canvas, the poster once it is in the stage, a
+   still's picture. */
+.ft__canvas,
+.ft__stage > [data-poster],
+.ft__still img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ft__overlays {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ft__overlays > [data-stop],
+.ft__overlays > [data-moment] {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  /* Leaving (this rule) is quicker than arriving (the next): overlays can sit
+     a tenth of a screen apart, and at one even 600ms the outgoing text was
+     still a quarter visible under the incoming one. */
+  transition: opacity 260ms ease-out, transform 260ms ease-out, visibility 0s linear 260ms;
+}
+.ft__overlays > [data-stop][data-active],
+.ft__overlays > [data-moment][data-active] {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 600ms cubic-bezier(0.19, 1, 0.22, 1), transform 600ms cubic-bezier(0.19, 1, 0.22, 1), visibility 0s;
+}
+/* The first stop's overlay after the intro: a slow, even fade. */
+fly-through[intro-reveal] .ft__overlays > [data-stop][data-active] {
+  transition: opacity 1300ms cubic-bezier(0.4, 0, 0.2, 1), transform 1300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 0s;
+}
+
+/* Loading screen: a veil over the start frame (drawn first), so the visitor
+   sees where they are while the rest arrives. Fades out once ready. */
+.ft__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  justify-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  background: color-mix(in srgb, var(--ft-bg) 55%, transparent);
+  /* Prefixed first: minifiers that merge the pair (Lightning CSS, Vite 8)
+     keep the last, and only Safari reads the prefixed one. */
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  backdrop-filter: blur(14px) saturate(1.1);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  /* The script reads this transition (veilMs in flythrough.ts) to remove the
+     screen and to hold the intro until the fade is over. Opacity only: the
+     picture behind is still while it fades. */
+  transition: opacity var(--ft-loading-fade, 450ms) ease;
+}
+.ft__loading.ft__loading--done { opacity: 0; pointer-events: none; }
+.ft__loading-pct {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+.ft__loading-bar {
+  width: 200px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in srgb, var(--ft-fg) 20%, transparent);
+  overflow: hidden;
+}
+.ft__loading-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ft-fg);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms ease;
+}
+
+/* Progress bar: a thin line, then evenly spaced labels. */
+.ft__bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--ft-bar-bottom);
+  transform: translateX(-50%);
+  width: min(720px, calc(100% - 40px));
+  display: grid;
+  gap: 10px;
+  z-index: 2;
+}
+.ft__line {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, var(--ft-fg) 22%, transparent);
+  overflow: hidden;
+}
+.ft__fill {
+  height: 100%;
+  background: var(--ft-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  will-change: transform;
+}
+.ft__labels {
+  display: flex;
+  justify-content: space-between;
+}
+.ft__label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font: inherit;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  color: color-mix(in srgb, var(--ft-fg) 55%, transparent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: color 300ms ease;
+}
+.ft__label:hover,
+.ft__label[aria-current] { color: var(--ft-fg); }
+.ft__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+/* Invisible hit area, mostly upward (the bottom edge of a phone belongs to
+   the system's home gesture). About 44px tall and at least 44px wide. */
+.ft__label::after {
+  content: '';
+  position: absolute;
+  top: -20px;
+  bottom: -10px;
+  left: 50%;
+  width: max(100%, 44px);
+  transform: translateX(-50%);
+}
+.ft__label:first-child::after { left: 0; transform: translateX(-12px); }
+.ft__label:last-child::after { left: auto; right: -12px; transform: none; }
+@media (max-width: 640px) {
+  /* Hidden from sight only: a screen reader still needs each button's name. */
+  .ft__label span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ft__label[aria-current] span {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+  .ft__dot { width: 8px; height: 8px; }
+}
+
+/* Stills mode (reduced motion): one screen per stop and per moment, each
+   over its still, normal scrolling. */
+fly-through[stills] .ft__stills { display: grid; }
+/* Clipped sideways: on a phone Chromium counted a wrapped line's unwrapped
+   width as overflow (the demo's split headline), and the page zoomed out. */
+.ft__still {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  overflow-x: clip;
+}
+.ft__still img { object-fit: cover; }
+.ft__still > [data-stop],
+.ft__still > [data-moment] { position: relative; }
+
+/* Measures 100lvh for the player's layout (see lvh() in flythrough.ts). */
+.ft__probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100vh;
+  height: 100lvh;
+  visibility: hidden;
+  pointer-events: none;
+}
